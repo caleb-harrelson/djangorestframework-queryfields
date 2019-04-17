@@ -33,13 +33,21 @@ class QueryFieldsMixin(object):
         excludes = query_params.getlist(self.exclude_arg_name)
         exclude_field_names = {name for names in excludes for name in names.split(self.delimiter) if name}
 
-        if not include_field_names and not exclude_field_names:
+        fields_excluded_by_default = getattr(self.Meta, 'fields_excluded_by_default', None)
+
+        if not include_field_names and not exclude_field_names and not fields_excluded_by_default:
             # No user fields filtering was requested, we have nothing to do here.
             return
 
         serializer_field_names = set(self.fields)
 
+        # excluded explicitly
         fields_to_drop = serializer_field_names & exclude_field_names
+
+        # excluded by default
+        fields_to_drop |= serializer_field_names & (set(fields_excluded_by_default or []) - include_field_names)
+
+        # excluded by omission
         if include_field_names:
             fields_to_drop |= serializer_field_names - include_field_names
 
